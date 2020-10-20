@@ -1,0 +1,111 @@
+# # https://banyudu.com/posts/auto_publish_npm_and_generate_github_changelog.882513
+name: create-release
+on:
+  push:
+    # branches:
+    #   - "dev"
+
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v0.4.4
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # - uses: actions/setup-node@v1
+      #   with:
+      #     node-version: 10
+      #     registry-url: https://registry.npmjs.org/
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v0.4.4
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+
+
+
+      # - name: Add compare versions package
+      #   run: |
+      #     npm install compare-versions
+      #     npm install conventional-changelog-cli
+      #     # npx install conventional-changelog-cmyr-config -D
+      #     npx conventional-changelog -p angular -i CHANGELOG.md -w -r 0
+      #     # npx conventional-changelog -p cmyr-config -i ./CHANGELOG.md -s -w -r 0
+
+      # - name: Get latest release
+      #   uses: actions/github-script@v3.0.0
+      #   id: get-latest-release
+      #   with:
+      #     github-token: ${{secrets.GITHUB_TOKEN}}
+      #     result-encoding: string
+      #     script: |
+      #       try {
+      #           var latestRelease = await github.repos.getLatestRelease({ owner: context.repo.owner, repo: context.repo.repo });
+      #           return latestRelease.data.tag_name;
+      #       } catch (error) {
+      #           if (error.message === 'Not Found') {
+      #               return '0.0.0';
+      #           } else {
+      #               core.setFailed(error.message)
+      #           }
+      #       }
+
+      # - name: Get changelog
+      #   id: changelog-reader
+      #   uses: mindsers/changelog-reader-action@v2.0.0
+      #   with:
+      #     path: ./CHANGELOG.md
+
+      # - name: Compare version
+      #   uses: actions/github-script@v3.0.0
+      #   id: comparison
+      #   env:
+      #     currentVersion: ${{ steps.changelog-reader.outputs.version }}
+      #     latestRelease: ${{ steps.get-latest-release.outputs.result }}
+      #   with:
+      #     result-encoding: string
+      #     script: |
+      #       const compareVersions = require(`${process.env.GITHUB_WORKSPACE}/node_modules/compare-versions`);
+      #       var currentVersion = `${process.env.currentVersion}`;
+      #       var latestRelease = `${process.env.latestRelease}`;
+      #       return compareVersions.compare(currentVersion, latestRelease, ">");
+
+      # - name: Create release
+      #   # if: steps.comparison.outputs.result == 'true'
+      #   id: create_release
+      #   uses: actions/create-release@v1.1.4
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: v${{ steps.changelog-reader.outputs.version }}
+      #     release_name: Release v${{ steps.changelog-reader.outputs.version }}
+      #     body: ${{ steps.changelog-reader.outputs.changes }}
+      #     draft: ${{ steps.changelog-reader.outputs.status == 'unreleased' }}
+      #     prerelease: ${{ steps.changelog-reader.outputs.status == 'prereleased' }}
+
+      # - name: Upload sync2gitee(cached)
+      #   if: steps.create_release.outcome == 'success'
+      #   uses: actions/upload-release-asset@v1.0.2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./template/sync2gitee.cached.yml
+      #     asset_name: sync2gitee.cached.yml
+      #     asset_content_type: text/yaml
